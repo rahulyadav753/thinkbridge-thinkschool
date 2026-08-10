@@ -10,6 +10,10 @@ using RefactorTask.Services;
 using RefactorTask.Services.Rules;
 using Xunit;
 
+
+
+
+
 namespace RefactorTask.Tests;
 
 public class OrderServiceTests
@@ -95,3 +99,7 @@ public class OrderServiceTests
         await Assert.ThrowsAsync<EntityNotFoundException>(() => service.CreateOrderAsync(request, CancellationToken.None));
     }
 }
+
+// Test: validation rejects orders with negative quantity.
+
+
