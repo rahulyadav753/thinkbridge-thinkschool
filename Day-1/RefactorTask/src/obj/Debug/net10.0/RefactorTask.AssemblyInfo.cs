@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("RefactorTask")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1183b768b1372276afda5acf625f937a33bbf076")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6340b527273fb6ee5d404d87389242663111a401")]
 [assembly: System.Reflection.AssemblyProductAttribute("RefactorTask")]
 [assembly: System.Reflection.AssemblyTitleAttribute("RefactorTask")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
