@@ -7,7 +7,12 @@ using RefactorTask.Dtos;
 using RefactorTask.Models;
 using RefactorTask.Repositories;
 using RefactorTask.Services;
+using RefactorTask.Services.Rules;
 using Xunit;
+
+
+
+
 
 namespace RefactorTask.Tests;
 
@@ -31,7 +36,10 @@ public class OrderServiceTests
             .Returns(Task.CompletedTask);
 
         var logger = new Mock<ILogger<OrderService>>();
-        var service = new OrderService(repository.Object, logger.Object);
+        var service = new OrderService(
+            repository.Object,
+            logger.Object,
+            new List<IOrderRule> { new OrderStatusRule() });
 
         var request = new OrderCreateRequest
         {
@@ -56,7 +64,7 @@ public class OrderServiceTests
     {
         var repository = new Mock<IOrderRepository>();
         var logger = new Mock<ILogger<OrderService>>();
-        var service = new OrderService(repository.Object, logger.Object);
+        var service = new OrderService(repository.Object, logger.Object, new List<IOrderRule>());
 
         var request = new OrderCreateRequest
         {
@@ -76,7 +84,7 @@ public class OrderServiceTests
             .ReturnsAsync((Customer?)null);
 
         var logger = new Mock<ILogger<OrderService>>();
-        var service = new OrderService(repository.Object, logger.Object);
+        var service = new OrderService(repository.Object, logger.Object, new List<IOrderRule>());
 
         var request = new OrderCreateRequest
         {
@@ -91,3 +99,7 @@ public class OrderServiceTests
         await Assert.ThrowsAsync<EntityNotFoundException>(() => service.CreateOrderAsync(request, CancellationToken.None));
     }
 }
+
+// Test: validation rejects orders with negative quantity.
+
+

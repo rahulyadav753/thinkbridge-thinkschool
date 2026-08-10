@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using RefactorTask.Dtos;
 using RefactorTask.Models;
 using RefactorTask.Repositories;
+using RefactorTask.Services.Rules;
 
 namespace RefactorTask.Services;
 
@@ -17,22 +19,16 @@ public interface IOrderService
 public class OrderService : IOrderService
 {
     private const int MaxItemsPerOrder = 50;
-    private const decimal BulkDiscountThreshold = 10m;
-    private const decimal BulkDiscountRate = 0.05m;
-    private const decimal WelcomeDiscountAmount = 10m;
-    private const decimal LargeOrderThreshold = 200m;
-    private const decimal HighPriorityThreshold = 500m;
-    private const decimal MinimumOrderTotal = 20m;
-    private const string BlackFridayCode = "BLACKFRIDAY";
-    private const string WelcomeCode = "WELCOME";
 
     private readonly IOrderRepository _repository;
     private readonly ILogger<OrderService> _logger;
+    private readonly IEnumerable<IOrderRule> _orderRules;
 
-    public OrderService(IOrderRepository repository, ILogger<OrderService> logger)
+    public OrderService(IOrderRepository repository, ILogger<OrderService> logger, IEnumerable<IOrderRule> orderRules)
     {
         _repository = repository;
         _logger = logger;
+        _orderRules = orderRules;
     }
 
     public async Task<OrderResponse> CreateOrderAsync(OrderCreateRequest request, CancellationToken cancellationToken)
@@ -69,8 +65,6 @@ public class OrderService : IOrderService
         }
 
         var orderItems = new List<OrderItem>();
-        decimal totalAmount = 0m;
-
         for (var index = 0; index < request.Items.Count; index++)
         {
             var item = request.Items[index];
@@ -95,71 +89,42 @@ public class OrderService : IOrderService
                 throw new OrderValidationException($"Product '{product.Name}' is discontinued.");
             }
 
-            decimal unitPrice = product.Price;
-            if (item.Quantity > BulkDiscountThreshold)
-            {
-                unitPrice *= 1 - BulkDiscountRate;
-            }
-
-            if (!string.IsNullOrWhiteSpace(request.DiscountCode) &&
-                request.DiscountCode.Trim().Equals(BlackFridayCode, StringComparison.OrdinalIgnoreCase))
-            {
-                unitPrice *= 0.80m;
-            }
-
-            var lineTotal = unitPrice * item.Quantity;
-            if (lineTotal < 0)
-            {
-                throw new OrderValidationException("Line total must not be negative.");
-            }
-
-            totalAmount += lineTotal;
             orderItems.Add(new OrderItem
             {
                 ProductId = item.ProductId,
                 Quantity = item.Quantity,
                 UnitPrice = product.Price,
-                TotalPrice = lineTotal,
+                TotalPrice = product.Price * item.Quantity,
                 ProductName = product.Name
             });
         }
 
-        if (!string.IsNullOrWhiteSpace(request.DiscountCode) &&
-            request.DiscountCode.Trim().Equals(WelcomeCode, StringComparison.OrdinalIgnoreCase))
+        var previousOrderCount = await _repository.GetRecentOrderCountAsync(request.CustomerId, cancellationToken);
+        var context = new OrderRuleContext(request, orderItems, orderItems.Sum(item => item.TotalPrice))
         {
-            totalAmount -= WelcomeDiscountAmount;
+            PreviousOrderCount = previousOrderCount
+        };
+
+        foreach (var rule in _orderRules)
+        {
+            rule.Apply(context);
         }
 
-        if (totalAmount < 0)
+        if (context.TotalAmount < 0)
         {
-            totalAmount = 0;
+            context.TotalAmount = 0;
         }
-
-        if (totalAmount > LargeOrderThreshold)
-        {
-            totalAmount -= 50;
-        }
-
-        var status = totalAmount > LargeOrderThreshold ? "Ready" : "Review";
-        var priority = totalAmount > HighPriorityThreshold ? "High" : "Normal";
 
         var order = new Order
         {
             CustomerId = request.CustomerId,
             OrderDate = DateTime.UtcNow,
-            TotalAmount = totalAmount,
-            Status = status,
-            Priority = priority,
+            TotalAmount = context.TotalAmount,
+            Status = context.Status,
+            Priority = context.Priority,
             Notes = request.Notes,
             Items = orderItems
         };
-
-        var previousOrderCount = await _repository.GetRecentOrderCountAsync(request.CustomerId, cancellationToken);
-
-        if (previousOrderCount > 0 && totalAmount < MinimumOrderTotal)
-        {
-            throw new OrderValidationException($"Order total must be at least {MinimumOrderTotal} for returning customers.");
-        }
 
         await _repository.AddOrderAsync(order, cancellationToken);
         await _repository.AddOrderItemsAsync(orderItems, cancellationToken);

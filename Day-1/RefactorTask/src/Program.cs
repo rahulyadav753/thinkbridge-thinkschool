@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RefactorTask.Data;
 using RefactorTask.Repositories;
 using RefactorTask.Services;
+using RefactorTask.Services.Rules;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +15,13 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<IOrderRule, BulkDiscountRule>();
+builder.Services.AddScoped<IOrderRule, BlackFridayDiscountRule>();
+builder.Services.AddScoped<IOrderRule, WelcomeDiscountRule>();
+builder.Services.AddScoped<IOrderRule, LargeOrderDiscountRule>();
+builder.Services.AddScoped<IOrderRule, OrderStatusRule>();
+builder.Services.AddScoped<IOrderRule, OrderPriorityRule>();
+builder.Services.AddScoped<IOrderRule, ReturningCustomerMinimumOrderRule>();
 
 var app = builder.Build();
 
