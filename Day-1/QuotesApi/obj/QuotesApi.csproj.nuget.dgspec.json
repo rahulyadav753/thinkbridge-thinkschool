@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "d:\\Desktop\\ThinkSchool\\Day-1\\QuotesApi\\QuotesApi.csproj": {}
+    "D:\\Desktop\\ThinkSchool\\Day-1\\QuotesApi\\QuotesApi.csproj": {}
   },
   "projects": {
-    "d:\\Desktop\\ThinkSchool\\Day-1\\QuotesApi\\QuotesApi.csproj": {
+    "D:\\Desktop\\ThinkSchool\\Day-1\\QuotesApi\\QuotesApi.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "d:\\Desktop\\ThinkSchool\\Day-1\\QuotesApi\\QuotesApi.csproj",
+        "projectUniqueName": "D:\\Desktop\\ThinkSchool\\Day-1\\QuotesApi\\QuotesApi.csproj",
         "projectName": "QuotesApi",
-        "projectPath": "d:\\Desktop\\ThinkSchool\\Day-1\\QuotesApi\\QuotesApi.csproj",
+        "projectPath": "D:\\Desktop\\ThinkSchool\\Day-1\\QuotesApi\\QuotesApi.csproj",
         "packagesPath": "C:\\Users\\Sumant\\.nuget\\packages\\",
-        "outputPath": "d:\\Desktop\\ThinkSchool\\Day-1\\QuotesApi\\obj\\",
+        "outputPath": "D:\\Desktop\\ThinkSchool\\Day-1\\QuotesApi\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Sumant\\AppData\\Roaming\\NuGet\\NuGet.Config"
