@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RefactorTask.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RefactorTask.Tests.csproj" />
+  </Folder>
+</Solution>

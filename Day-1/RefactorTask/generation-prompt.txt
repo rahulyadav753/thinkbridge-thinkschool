@@ -1,0 +1,18 @@
+Create a deliberately bad legacy ASP.NET Core 10 Minimal API order endpoint.
+
+Generate approximately 300 lines of code in a single file named OrderController.cs.
+
+Requirements:
+- One giant POST /api/orders action
+- Mix business logic, EF Core database access, validation, and HTTP response shaping inside the action
+- Four empty catch { } blocks that swallow exceptions
+- Synchronous EF Core calls inside an async action
+- Return object instead of typed responses
+- No tests
+- Include subtle bugs:
+  1. An off-by-one error in order-item processing
+  2. A possible null reference exception
+- Use poor separation of concerns and duplicated logic
+- Make it realistic legacy code that a developer might need to refactor
+- Do not refactor or improve the code
+- Save the result as OrderController.cs
