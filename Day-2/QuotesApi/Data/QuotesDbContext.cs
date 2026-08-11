@@ -15,6 +15,9 @@ public class QuotesDbContext : DbContext
     public DbSet<Collection> Collections => Set<Collection>();
 
     public DbSet<User> Users => Set<User>();
+    
+
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -46,6 +49,20 @@ public class QuotesDbContext : DbContext
 
                 item.HasKey("CollectionId", "QuoteId");
             });
+        });
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.Token)
+                .IsRequired();
+
+            entity.Property(x => x.UserId)
+                .IsRequired();
+
+            entity.Property(x => x.ExpiresAt)
+                .IsRequired();
         });
     }
 }
