@@ -65,7 +65,6 @@ public class CollectionTests
 
         collection.AddItem(1);
         collection.RemoveItem(1);
-
         collection.Items.Should().BeEmpty();
     }
 }

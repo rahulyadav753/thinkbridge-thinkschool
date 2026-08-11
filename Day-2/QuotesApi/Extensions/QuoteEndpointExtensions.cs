@@ -5,6 +5,8 @@ namespace QuotesApi.Extensions;
 
 public static class QuoteEndpointExtensions
 {
+    private sealed record CreateQuoteRequest(string Author, string Text);
+
     public static IEndpointRouteBuilder MapQuoteEndpoints(
         this IEndpointRouteBuilder app)
     {
@@ -48,12 +50,17 @@ public static class QuoteEndpointExtensions
 
         // POST /api/quotes
         group.MapPost("/", async (
-            Quote quote,
+            CreateQuoteRequest request,
             IQuoteRepository repository,
             CancellationToken cancellationToken) =>
         {
+            var creation = Quote.Create(request.Author, request.Text);
+
+            if (!creation.IsSuccess)
+                return Results.BadRequest(creation.Error);
+
             var createdQuote = await repository.AddAsync(
-                quote,
+                creation.Quote!,
                 cancellationToken);
 
             return Results.Created(
