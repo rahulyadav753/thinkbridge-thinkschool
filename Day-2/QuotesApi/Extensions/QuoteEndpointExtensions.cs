@@ -66,7 +66,8 @@ public static class QuoteEndpointExtensions
             return Results.Created(
                 $"/api/quotes/{createdQuote.Id}",
                 createdQuote);
-        });
+        })
+        .RequireAuthorization();
 
         // DELETE /api/quotes/{id}
         group.MapDelete("/{id:int}", async (
@@ -81,7 +82,8 @@ public static class QuoteEndpointExtensions
             return deleted
                 ? Results.NoContent()
                 : Results.NotFound();
-        });
+        })
+        .RequireAuthorization();
 
         return app;
     }
