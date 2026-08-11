@@ -1,11 +1,5 @@
 D:\Desktop\ThinkSchool\Day-2\Tests.Domain\bin\Debug\net10.0\.msCoverageSourceRootsMapping_Tests.Domain
 D:\Desktop\ThinkSchool\Day-2\Tests.Domain\bin\Debug\net10.0\CoverletSourceRootsMapping_Tests.Domain
-D:\Desktop\ThinkSchool\Day-2\Tests.Domain\obj\Debug\net10.0\Tests.Domain.csproj.AssemblyReference.cache
-D:\Desktop\ThinkSchool\Day-2\Tests.Domain\obj\Debug\net10.0\Tests.Domain.GeneratedMSBuildEditorConfig.editorconfig
-D:\Desktop\ThinkSchool\Day-2\Tests.Domain\obj\Debug\net10.0\Tests.Domain.AssemblyInfoInputs.cache
-D:\Desktop\ThinkSchool\Day-2\Tests.Domain\obj\Debug\net10.0\Tests.Domain.AssemblyInfo.cs
-D:\Desktop\ThinkSchool\Day-2\Tests.Domain\obj\Debug\net10.0\Tests.Domain.csproj.CoreCompileInputs.cache
-D:\Desktop\ThinkSchool\Day-2\Tests.Domain\obj\Debug\net10.0\Tests.Domain.sourcelink.json
 D:\Desktop\ThinkSchool\Day-2\Tests.Domain\bin\Debug\net10.0\testhost.dll
 D:\Desktop\ThinkSchool\Day-2\Tests.Domain\bin\Debug\net10.0\xunit.abstractions.dll
 D:\Desktop\ThinkSchool\Day-2\Tests.Domain\bin\Debug\net10.0\QuotesApi.deps.json
@@ -132,6 +126,12 @@ D:\Desktop\ThinkSchool\Day-2\Tests.Domain\bin\Debug\net10.0\runtimes\win-x64\nat
 D:\Desktop\ThinkSchool\Day-2\Tests.Domain\bin\Debug\net10.0\runtimes\win-x86\native\e_sqlite3.dll
 D:\Desktop\ThinkSchool\Day-2\Tests.Domain\bin\Debug\net10.0\QuotesApi.dll
 D:\Desktop\ThinkSchool\Day-2\Tests.Domain\bin\Debug\net10.0\QuotesApi.pdb
+D:\Desktop\ThinkSchool\Day-2\Tests.Domain\obj\Debug\net10.0\Tests.Domain.csproj.AssemblyReference.cache
+D:\Desktop\ThinkSchool\Day-2\Tests.Domain\obj\Debug\net10.0\Tests.Domain.GeneratedMSBuildEditorConfig.editorconfig
+D:\Desktop\ThinkSchool\Day-2\Tests.Domain\obj\Debug\net10.0\Tests.Domain.AssemblyInfoInputs.cache
+D:\Desktop\ThinkSchool\Day-2\Tests.Domain\obj\Debug\net10.0\Tests.Domain.AssemblyInfo.cs
+D:\Desktop\ThinkSchool\Day-2\Tests.Domain\obj\Debug\net10.0\Tests.Domain.csproj.CoreCompileInputs.cache
+D:\Desktop\ThinkSchool\Day-2\Tests.Domain\obj\Debug\net10.0\Tests.Domain.sourcelink.json
 D:\Desktop\ThinkSchool\Day-2\Tests.Domain\obj\Debug\net10.0\Tests.Do.0805A832.Up2Date
 D:\Desktop\ThinkSchool\Day-2\Tests.Domain\obj\Debug\net10.0\Tests.Domain.dll
 D:\Desktop\ThinkSchool\Day-2\Tests.Domain\obj\Debug\net10.0\refint\Tests.Domain.dll

@@ -20,6 +20,7 @@ public class QuoteRepository : IQuoteRepository
     {
         return await _context.Quotes
             .AsNoTracking()
+            .Where(q => !q.IsDeleted)
             .Skip((page - 1) * size)
             .Take(size)
             .ToListAsync(cancellationToken);
@@ -31,7 +32,7 @@ public class QuoteRepository : IQuoteRepository
     {
         return await _context.Quotes
             .AsNoTracking()
-            .FirstOrDefaultAsync(q => q.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(q => q.Id == id && !q.IsDeleted, cancellationToken);
     }
 
     public async Task<Quote> AddAsync(
@@ -50,12 +51,12 @@ public class QuoteRepository : IQuoteRepository
         CancellationToken cancellationToken)
     {
         var quote = await _context.Quotes
-            .FirstOrDefaultAsync(q => q.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(q => q.Id == id && !q.IsDeleted, cancellationToken);
 
         if (quote is null)
             return false;
 
-        _context.Quotes.Remove(quote);
+        quote.SoftDelete();
 
         await _context.SaveChangesAsync(cancellationToken);
 
