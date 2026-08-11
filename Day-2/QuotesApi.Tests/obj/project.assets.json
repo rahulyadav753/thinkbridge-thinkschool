@@ -3121,11 +3121,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\Desktop\\ThinkSchool\\Day-2\\QuotesApi.Tests\\QuotesApi.Tests.csproj",
+      "projectUniqueName": "d:\\Desktop\\ThinkSchool\\Day-2\\QuotesApi.Tests\\QuotesApi.Tests.csproj",
       "projectName": "QuotesApi.Tests",
-      "projectPath": "D:\\Desktop\\ThinkSchool\\Day-2\\QuotesApi.Tests\\QuotesApi.Tests.csproj",
+      "projectPath": "d:\\Desktop\\ThinkSchool\\Day-2\\QuotesApi.Tests\\QuotesApi.Tests.csproj",
       "packagesPath": "C:\\Users\\Sumant\\.nuget\\packages\\",
-      "outputPath": "D:\\Desktop\\ThinkSchool\\Day-2\\QuotesApi.Tests\\obj\\",
+      "outputPath": "d:\\Desktop\\ThinkSchool\\Day-2\\QuotesApi.Tests\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Sumant\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -3141,8 +3141,8 @@
           "framework": "net10.0",
           "targetAlias": "net10.0",
           "projectReferences": {
-            "D:\\Desktop\\ThinkSchool\\Day-2\\QuotesApi\\QuotesApi.csproj": {
-              "projectPath": "D:\\Desktop\\ThinkSchool\\Day-2\\QuotesApi\\QuotesApi.csproj"
+            "d:\\Desktop\\ThinkSchool\\Day-2\\QuotesApi\\QuotesApi.csproj": {
+              "projectPath": "d:\\Desktop\\ThinkSchool\\Day-2\\QuotesApi\\QuotesApi.csproj"
             }
           }
         }
