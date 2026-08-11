@@ -290,3 +290,13 @@ D:\Desktop\ThinkSchool\Day-2\QuotesApi\obj\Debug\net10.0\swae.build.ex.cache
 D:\Desktop\ThinkSchool\Day-2\QuotesApi\obj\Debug\net10.0\QuotesApi.csproj.Up2Date
 D:\Desktop\ThinkSchool\Day-2\QuotesApi\obj\Debug\net10.0\QuotesApi.genruntimeconfig.cache
 D:\Desktop\ThinkSchool\Day-2\QuotesApi\obj\Debug\net10.0\ref\QuotesApi.dll
+D:\Desktop\ThinkSchool\Day-2\QuotesApi\bin\Debug\net10.0\BCrypt-Net-Next.dll
+D:\Desktop\ThinkSchool\Day-2\QuotesApi\bin\Debug\net10.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+D:\Desktop\ThinkSchool\Day-2\QuotesApi\bin\Debug\net10.0\Microsoft.Bcl.Cryptography.dll
+D:\Desktop\ThinkSchool\Day-2\QuotesApi\bin\Debug\net10.0\Microsoft.IdentityModel.Abstractions.dll
+D:\Desktop\ThinkSchool\Day-2\QuotesApi\bin\Debug\net10.0\Microsoft.IdentityModel.JsonWebTokens.dll
+D:\Desktop\ThinkSchool\Day-2\QuotesApi\bin\Debug\net10.0\Microsoft.IdentityModel.Logging.dll
+D:\Desktop\ThinkSchool\Day-2\QuotesApi\bin\Debug\net10.0\Microsoft.IdentityModel.Protocols.dll
+D:\Desktop\ThinkSchool\Day-2\QuotesApi\bin\Debug\net10.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+D:\Desktop\ThinkSchool\Day-2\QuotesApi\bin\Debug\net10.0\Microsoft.IdentityModel.Tokens.dll
+D:\Desktop\ThinkSchool\Day-2\QuotesApi\bin\Debug\net10.0\System.IdentityModel.Tokens.Jwt.dll
