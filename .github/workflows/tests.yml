@@ -16,16 +16,20 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: "10.0.x"
 
       - name: Restore
+        working-directory: Day-3
         run: dotnet restore
 
       - name: Build
+        working-directory: Day-3
         run: dotnet build --no-restore
 
       - name: Unit Tests
-        run: dotnet test ./Quotes.Tests.Unit --no-build --verbosity normal
+        working-directory: Day-3
+        run: dotnet test ./Quotes.Tests.Unit --no-build
 
       - name: Integration Tests
-        run: dotnet test ./Quotes.Tests.Integration --no-build --verbosity normal
+        working-directory: Day-3
+        run: dotnet test ./Quotes.Tests.Integration --no-build
