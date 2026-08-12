@@ -19,7 +19,10 @@ public static class AuthEndpointExtensions
     {
         var group = app.MapGroup("/api/auth");
 
+        // ============================================================
         // POST /api/auth/login
+        // ============================================================
+
         group.MapPost("/login", async (
             LoginRequest request,
             QuotesDbContext db,
@@ -66,11 +69,16 @@ public static class AuthEndpointExtensions
                     15 * 60));
         });
 
+
+        // ============================================================
         // POST /api/auth/refresh
+        // ============================================================
+
         group.MapPost("/refresh", async (
             RefreshRequest request,
             QuotesDbContext db,
             IConfiguration config,
+            RefreshTokenManager refreshTokenManager,
             CancellationToken cancellationToken) =>
         {
             var tokenHash =
@@ -81,11 +89,16 @@ public static class AuthEndpointExtensions
                     x => x.Token == tokenHash,
                     cancellationToken);
 
+            // Token does not exist
             if (storedToken is null)
                 return Results.Unauthorized();
 
-            if (storedToken.RevokedAt is not null &&
-                storedToken.ReplacedByToken is not null)
+
+            // ========================================================
+            // Refresh-token reuse detection
+            // ========================================================
+
+            if (refreshTokenManager.IsReuseDetected(storedToken))
             {
                 Console.WriteLine(
                     $"SECURITY EVENT: Refresh token reuse detected. UserId={storedToken.UserId}");
@@ -94,22 +107,35 @@ public static class AuthEndpointExtensions
                     .Where(x => x.UserId == storedToken.UserId)
                     .ToListAsync(cancellationToken);
 
-                foreach (var token in familyTokens)
-                {
-                    if (token.RevokedAt is null)
-                        token.RevokedAt = DateTime.UtcNow;
-                }
+                refreshTokenManager.RevokeTokenFamily(
+                    familyTokens);
 
-                await db.SaveChangesAsync(cancellationToken);
+                await db.SaveChangesAsync(
+                    cancellationToken);
 
                 return Results.Unauthorized();
             }
 
+
+            // ========================================================
+            // Token already revoked
+            // ========================================================
+
             if (storedToken.RevokedAt is not null)
                 return Results.Unauthorized();
 
-            if (storedToken.ExpiresAt <= DateTime.UtcNow)
+
+            // ========================================================
+            // Token expired
+            // ========================================================
+
+            if (refreshTokenManager.IsExpired(storedToken))
                 return Results.Unauthorized();
+
+
+            // ========================================================
+            // Find user
+            // ========================================================
 
             var user = await db.Users
                 .SingleOrDefaultAsync(
@@ -119,9 +145,19 @@ public static class AuthEndpointExtensions
             if (user is null)
                 return Results.Unauthorized();
 
+
+            // ========================================================
+            // Create new access token
+            // ========================================================
+
             var accessToken = CreateAccessToken(
                 user,
                 config);
+
+
+            // ========================================================
+            // Rotate refresh token
+            // ========================================================
 
             var newRefreshToken =
                 RefreshTokenService.Generate();
@@ -133,16 +169,26 @@ public static class AuthEndpointExtensions
             {
                 Token = newRefreshTokenHash,
                 UserId = user.Id,
-                ExpiresAt = DateTime.UtcNow.AddDays(7)
+                ExpiresAt =
+                    refreshTokenManager.UtcNow.AddDays(7)
             };
 
-            storedToken.RevokedAt = DateTime.UtcNow;
+
+            // ========================================================
+            // Revoke old refresh token
+            // ========================================================
+
+            storedToken.RevokedAt =
+                refreshTokenManager.UtcNow;
+
             storedToken.ReplacedByToken =
                 newRefreshTokenHash;
 
-            db.RefreshTokens.Add(newRefreshTokenEntity);
+            db.RefreshTokens.Add(
+                newRefreshTokenEntity);
 
-            await db.SaveChangesAsync(cancellationToken);
+            await db.SaveChangesAsync(
+                cancellationToken);
 
             return Results.Ok(
                 new LoginResponse(
@@ -151,14 +197,19 @@ public static class AuthEndpointExtensions
                     15 * 60));
         });
 
+
+        // ============================================================
         // POST /api/auth/logout
+        // ============================================================
+
         group.MapPost("/logout", async (
             RefreshRequest request,
             QuotesDbContext db,
             CancellationToken cancellationToken) =>
         {
             var tokenHash =
-                RefreshTokenService.Hash(request.RefreshToken);
+                RefreshTokenService.Hash(
+                    request.RefreshToken);
 
             var storedToken = await db.RefreshTokens
                 .SingleOrDefaultAsync(
@@ -170,7 +221,8 @@ public static class AuthEndpointExtensions
 
             if (storedToken.RevokedAt is null)
             {
-                storedToken.RevokedAt = DateTime.UtcNow;
+                storedToken.RevokedAt =
+                    DateTime.UtcNow;
 
                 await db.SaveChangesAsync(
                     cancellationToken);
@@ -182,6 +234,11 @@ public static class AuthEndpointExtensions
         return app;
     }
 
+
+    // ================================================================
+    // Create Access Token
+    // ================================================================
+
     private static string CreateAccessToken(
         User user,
         IConfiguration configuration)
@@ -191,6 +248,7 @@ public static class AuthEndpointExtensions
                 "JWT key is not configured.");
 
         var issuer = configuration["Jwt:Issuer"];
+
         var audience = configuration["Jwt:Audience"];
 
         const int expiresIn = 15 * 60;
@@ -221,7 +279,8 @@ public static class AuthEndpointExtensions
             issuer: issuer,
             audience: audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddSeconds(expiresIn),
+            expires:
+                DateTime.UtcNow.AddSeconds(expiresIn),
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler()
