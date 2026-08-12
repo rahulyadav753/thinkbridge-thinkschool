@@ -456,3 +456,4 @@ D:\Desktop\ThinkSchool\Day-3\QuotesApi\obj\Debug\net10.0\refint\QuotesApi.dll
 D:\Desktop\ThinkSchool\Day-3\QuotesApi\obj\Debug\net10.0\QuotesApi.pdb
 D:\Desktop\ThinkSchool\Day-3\QuotesApi\obj\Debug\net10.0\QuotesApi.genruntimeconfig.cache
 D:\Desktop\ThinkSchool\Day-3\QuotesApi\obj\Debug\net10.0\ref\QuotesApi.dll
+D:\Desktop\ThinkSchool\Day-3\QuotesApi\bin\Debug\net10.0\appsettings.Testing.json
