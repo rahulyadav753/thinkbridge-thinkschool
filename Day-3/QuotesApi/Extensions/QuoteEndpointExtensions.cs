@@ -12,7 +12,6 @@ public static class QuoteEndpointExtensions
     {
         var group = app.MapGroup("/api/quotes");
 
-        // GET /api/quotes?page=1&size=10
         group.MapGet("/", async (
             int? page,
             int? size,
@@ -33,7 +32,6 @@ public static class QuoteEndpointExtensions
             return Results.Ok(quotes);
         });
 
-        // GET /api/quotes/{id}
         group.MapGet("/{id:int}", async (
             int id,
             IQuoteRepository repository,
@@ -48,7 +46,6 @@ public static class QuoteEndpointExtensions
                 : Results.Ok(quote);
         });
 
-        // POST /api/quotes
         group.MapPost("/", async (
             CreateQuoteRequest request,
             IQuoteRepository repository,
@@ -69,7 +66,6 @@ public static class QuoteEndpointExtensions
         })
         .RequireAuthorization();
 
-        // DELETE /api/quotes/{id}
         group.MapDelete("/{id:int}", async (
             int id,
             IQuoteRepository repository,
@@ -83,7 +79,7 @@ public static class QuoteEndpointExtensions
                 ? Results.NoContent()
                 : Results.NotFound();
         })
-        .RequireAuthorization();
+        .RequireAuthorization("can-edit-quotes");
 
         return app;
     }

@@ -84,7 +84,6 @@ public static class AuthEndpointExtensions
             if (storedToken is null)
                 return Results.Unauthorized();
 
-            // Refresh token reuse detection
             if (storedToken.RevokedAt is not null &&
                 storedToken.ReplacedByToken is not null)
             {
@@ -204,7 +203,11 @@ public static class AuthEndpointExtensions
 
             new Claim(
                 JwtRegisteredClaimNames.Email,
-                user.Email)
+                user.Email),
+
+            new Claim(
+                "scope",
+                "quotes.write")
         };
 
         var key = new SymmetricSecurityKey(
