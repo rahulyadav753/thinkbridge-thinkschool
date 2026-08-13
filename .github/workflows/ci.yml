@@ -63,9 +63,10 @@ jobs:
           foreach ($file in $coverageFiles) {
             [xml]$coverage = Get-Content $file.FullName
 
-            $lineRate = [double]$coverage.coverage.'line-rate'
-            $valid = 100
-            $covered = $lineRate * $valid
+            $covered = [double]$coverage.coverage.'lines-covered'
+            $valid = [double]$coverage.coverage.'lines-valid'
+
+            Write-Host "$($file.FullName): $covered / $valid lines covered"
 
             $totalCovered += $covered
             $totalValid += $valid
@@ -73,6 +74,8 @@ jobs:
 
           $coveragePercentage = ($totalCovered / $totalValid) * 100
 
+          Write-Host "Total lines covered: $totalCovered"
+          Write-Host "Total valid lines: $totalValid"
           Write-Host "Total coverage: $coveragePercentage%"
 
           if ($coveragePercentage -lt 70) {
