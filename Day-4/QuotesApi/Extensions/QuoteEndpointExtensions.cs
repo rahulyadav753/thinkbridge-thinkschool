@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using QuotesApi.Models;
 using QuotesApi.Repositories;
 
@@ -22,7 +23,8 @@ public static class QuoteEndpointExtensions
             int pageSize = size ?? 10;
 
             if (currentPage < 1 || pageSize < 1)
-                return Results.BadRequest("Page and size must be greater than 0.");
+                return Results.BadRequest(
+                    "Page and size must be greater than 0.");
 
             var quotes = await repository.GetQuotesAsync(
                 currentPage,
@@ -49,9 +51,14 @@ public static class QuoteEndpointExtensions
         group.MapPost("/", async (
             CreateQuoteRequest request,
             IQuoteRepository repository,
+            ILoggerFactory loggerFactory,
             CancellationToken cancellationToken) =>
         {
-            var creation = Quote.Create(request.Author, request.Text);
+            var logger = loggerFactory.CreateLogger("QuotesApi.QuoteEndpoints");
+
+            var creation = Quote.Create(
+                request.Author,
+                request.Text);
 
             if (!creation.IsSuccess)
                 return Results.BadRequest(creation.Error);
@@ -59,6 +66,10 @@ public static class QuoteEndpointExtensions
             var createdQuote = await repository.AddAsync(
                 creation.Quote!,
                 cancellationToken);
+
+            logger.LogInformation(
+                "Created quote {QuoteId}",
+                createdQuote.Id);
 
             return Results.Created(
                 $"/api/quotes/{createdQuote.Id}",

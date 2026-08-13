@@ -8,10 +8,29 @@ using QuotesApi.Extensions;
 using QuotesApi.Models;
 using QuotesApi.Repositories;
 using QuotesApi.Services;
+using Serilog;
+using Serilog.Context;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ============================================================
+// Serilog
+// ============================================================
+
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.FromLogContext()
+        .WriteTo.Console(
+            outputTemplate:
+        "[{Timestamp:HH:mm:ss} {Level:u3}] " +
+        "[TraceId:{TraceId}] " +
+        "{Message:lj}{NewLine}{Exception}");
+});
+
 
 // ============================================================
 // Configuration
@@ -184,6 +203,21 @@ builder.Services.AddTransient<RefreshTokenManager>();
 // ============================================================
 
 var app = builder.Build();
+
+
+// ============================================================
+// Request TraceId correlation
+// ============================================================
+
+app.Use(async (context, next) =>
+{
+    using (LogContext.PushProperty(
+        "TraceId",
+        context.TraceIdentifier))
+    {
+        await next();
+    }
+});
 
 
 // ============================================================
