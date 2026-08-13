@@ -2,9 +2,11 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using QuotesApi.Data;
 using QuotesApi.Models;
+using QuotesApi.Options;
 using QuotesApi.Services;
 
 namespace QuotesApi.Extensions;
@@ -14,8 +16,7 @@ public static class AuthEndpointExtensions
     private sealed record RefreshRequest(string RefreshToken);
 
     public static IEndpointRouteBuilder MapAuthEndpoints(
-        this IEndpointRouteBuilder app,
-        IConfiguration configuration)
+        this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/auth");
 
@@ -26,6 +27,7 @@ public static class AuthEndpointExtensions
         group.MapPost("/login", async (
             LoginRequest request,
             QuotesDbContext db,
+            IOptions<JwtOptions> jwtOptions,
             CancellationToken cancellationToken) =>
         {
             var user = await db.Users
@@ -43,7 +45,7 @@ public static class AuthEndpointExtensions
 
             var accessToken = CreateAccessToken(
                 user,
-                configuration);
+                jwtOptions.Value);
 
             var refreshToken =
                 RefreshTokenService.Generate();
@@ -66,7 +68,7 @@ public static class AuthEndpointExtensions
                 new LoginResponse(
                     accessToken,
                     refreshToken,
-                    15 * 60));
+                    (int)jwtOptions.Value.AccessTokenLifetime.TotalSeconds));
         });
 
 
@@ -77,7 +79,7 @@ public static class AuthEndpointExtensions
         group.MapPost("/refresh", async (
             RefreshRequest request,
             QuotesDbContext db,
-            IConfiguration config,
+            IOptions<JwtOptions> jwtOptions,
             RefreshTokenManager refreshTokenManager,
             CancellationToken cancellationToken) =>
         {
@@ -152,7 +154,7 @@ public static class AuthEndpointExtensions
 
             var accessToken = CreateAccessToken(
                 user,
-                config);
+                jwtOptions.Value);
 
 
             // ========================================================
@@ -194,7 +196,7 @@ public static class AuthEndpointExtensions
                 new LoginResponse(
                     accessToken,
                     newRefreshToken,
-                    15 * 60));
+                    (int)jwtOptions.Value.AccessTokenLifetime.TotalSeconds));
         });
 
 
@@ -241,17 +243,25 @@ public static class AuthEndpointExtensions
 
     private static string CreateAccessToken(
         User user,
-        IConfiguration configuration)
+        JwtOptions jwtOptions)
     {
-        var jwtKey = configuration["Jwt:Key"]
-            ?? throw new InvalidOperationException(
-                "JWT key is not configured.");
+        if (string.IsNullOrWhiteSpace(jwtOptions.Key))
+        {
+            throw new InvalidOperationException(
+                "JWT signing key is not configured.");
+        }
 
-        var issuer = configuration["Jwt:Issuer"];
+        if (string.IsNullOrWhiteSpace(jwtOptions.Issuer))
+        {
+            throw new InvalidOperationException(
+                "JWT issuer is not configured.");
+        }
 
-        var audience = configuration["Jwt:Audience"];
-
-        const int expiresIn = 15 * 60;
+        if (string.IsNullOrWhiteSpace(jwtOptions.Audience))
+        {
+            throw new InvalidOperationException(
+                "JWT audience is not configured.");
+        }
 
         var claims = new[]
         {
@@ -269,18 +279,19 @@ public static class AuthEndpointExtensions
         };
 
         var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtKey));
+            Encoding.UTF8.GetBytes(jwtOptions.Key));
 
         var credentials = new SigningCredentials(
             key,
             SecurityAlgorithms.HmacSha256);
 
         var token = new JwtSecurityToken(
-            issuer: issuer,
-            audience: audience,
+            issuer: jwtOptions.Issuer,
+            audience: jwtOptions.Audience,
             claims: claims,
             expires:
-                DateTime.UtcNow.AddSeconds(expiresIn),
+                DateTime.UtcNow.Add(
+                    jwtOptions.AccessTokenLifetime),
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler()
