@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: |
+          dotnet restore ./Day-3/QuotesApi/QuotesApi.csproj
+          dotnet restore ./Day-3/Quotes.Tests.Unit/Quotes.Tests.Unit.csproj
+          dotnet restore ./Day-3/Quotes.Tests.Integration/Quotes.Tests.Integration.csproj
+
+      - name: Build
+        run: |
+          dotnet build ./Day-3/QuotesApi/QuotesApi.csproj --no-restore
+          dotnet build ./Day-3/Quotes.Tests.Unit/Quotes.Tests.Unit.csproj --no-restore
+          dotnet build ./Day-3/Quotes.Tests.Integration/Quotes.Tests.Integration.csproj --no-restore
+
+      - name: Test
+        run: |
+          dotnet test ./Day-3/Quotes.Tests.Unit/Quotes.Tests.Unit.csproj \
+            --no-build \
+            --logger "trx;LogFileName=unit-test-results.trx" \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./TestResults/Unit
+
+          dotnet test ./Day-3/Quotes.Tests.Integration/Quotes.Tests.Integration.csproj \
+            --no-build \
+            --logger "trx;LogFileName=integration-test-results.trx" \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./TestResults/Integration
+
+      - name: Check Coverage
+        shell: pwsh
+        run: |
+          $coverageFiles = Get-ChildItem -Path ./TestResults -Filter coverage.cobertura.xml -Recurse
+
+          if ($coverageFiles.Count -eq 0) {
+            Write-Error "Coverage file not found."
+            exit 1
+          }
+
+          $totalCovered = 0
+          $totalValid = 0
+
+          foreach ($file in $coverageFiles) {
+            [xml]$coverage = Get-Content $file.FullName
+
+            $lineRate = [double]$coverage.coverage.'line-rate'
+            $valid = 100
+            $covered = $lineRate * $valid
+
+            $totalCovered += $covered
+            $totalValid += $valid
+          }
+
+          $coveragePercentage = ($totalCovered / $totalValid) * 100
+
+          Write-Host "Total coverage: $coveragePercentage%"
+
+          if ($coveragePercentage -lt 70) {
+            Write-Error "Coverage is below 70%."
+            exit 1
+          }
+
+          Write-Host "Coverage requirement passed."
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: ./TestResults
+
+      - name: Upload Coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: ./TestResults

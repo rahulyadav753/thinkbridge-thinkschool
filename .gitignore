@@ -1,0 +1,47 @@
+# Build output
+**/bin/
+**/obj/
+
+# .NET user files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code
+.vscode/
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# Test results
+TestResults/
+*.trx
+
+# Coverage
+coverage/
+*.coverage
+*.coveragexml
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Node.js
+**/node_modules/
+**/dist/
+**/.vite/
+
+# OS files
+.DS_Store
+Thumbs.db
