@@ -1,12 +1,19 @@
+using Azure.Extensions.AspNetCore.Configuration.Secrets;
+using Azure.Identity;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using QuotesApi.Authorization;
+using QuotesApi.Configuration;
 using QuotesApi.Data;
 using QuotesApi.Extensions;
 using QuotesApi.Models;
+using QuotesApi.Options;
 using QuotesApi.Repositories;
 using QuotesApi.Services;
 using Serilog;
@@ -25,39 +32,103 @@ var activitySource = new ActivitySource("QuotesApi");
 
 
 // ============================================================
+// JWT Options
+// ============================================================
+
+builder.Services.Configure<JwtOptions>(
+    builder.Configuration.GetSection("Jwt"));
+
+
+// ============================================================
+// Azure Key Vault (production secret source)
+// ============================================================
+//
+// The Application Insights connection string is NEVER
+// hardcoded or stored in appsettings.
+//
+// In production, Key Vault is used when KeyVault:VaultUri
+// is configured.
+//
+// Locally, KeyVault:VaultUri can remain empty and the
+// application uses User Secrets / environment variables.
+// ============================================================
+
+builder.Services.Configure<KeyVaultOptions>(
+    builder.Configuration.GetSection("KeyVault"));
+
+var keyVaultOptions = builder.Configuration
+    .GetSection("KeyVault")
+    .Get<KeyVaultOptions>();
+
+if (!string.IsNullOrWhiteSpace(keyVaultOptions?.VaultUri))
+{
+    builder.Configuration.AddAzureKeyVault(
+        new Uri(keyVaultOptions.VaultUri),
+        new DefaultAzureCredential());
+}
+
+
+// ============================================================
+// Application Insights configuration
+// ============================================================
+
+var applicationInsightsConnectionString =
+    builder.Configuration["ApplicationInsightsConnectionString"]
+    ?? builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"];
+
+var useAzureMonitor =
+    !string.IsNullOrWhiteSpace(
+        applicationInsightsConnectionString);
+
+
+// ============================================================
 // Serilog
 // ============================================================
 
-builder.Host.UseSerilog((context, services, configuration) =>
-{
-    configuration
-        .ReadFrom.Configuration(context.Configuration)
-        .Enrich.FromLogContext()
+builder.Logging.ClearProviders();
 
-        // ----------------------------------------------------
-        // Console
-        // ----------------------------------------------------
-        .WriteTo.Console(
-            outputTemplate:
-                "[{Timestamp:HH:mm:ss} {Level:u3}] " +
-                "[TraceId:{TraceId}] " +
-                "[SpanId:{SpanId}] " +
-                "{Message:lj}{NewLine}{Exception}")
+builder.Host.UseSerilog(
+    (context, services, configuration) =>
+    {
+        configuration
+            .ReadFrom.Configuration(
+                context.Configuration)
 
-        // ----------------------------------------------------
-        // Aspire Dashboard / OpenTelemetry
-        // ----------------------------------------------------
-        .WriteTo.OpenTelemetry(options =>
-        {
-            options.Endpoint = "http://localhost:4317";
+            .Enrich.FromLogContext()
 
-            options.ResourceAttributes =
-                new Dictionary<string, object>
+            // ------------------------------------------------
+            // Console
+            // ------------------------------------------------
+
+            .WriteTo.Console(
+                outputTemplate:
+                    "[{Timestamp:HH:mm:ss} {Level:u3}] " +
+                    "[TraceId:{TraceId}] " +
+                    "[SpanId:{SpanId}] " +
+                    "{Message:lj}{NewLine}{Exception}")
+
+            // ------------------------------------------------
+            // Aspire Dashboard / OpenTelemetry
+            // ------------------------------------------------
+
+            .WriteTo.OpenTelemetry(
+                options =>
                 {
-                    ["service.name"] = "QuotesApi"
-                };
-        });
-});
+                    options.Endpoint =
+                        "http://localhost:4317";
+
+                    options.ResourceAttributes =
+                        new Dictionary<string, object>
+                        {
+                            ["service.name"] =
+                                "QuotesApi"
+                        };
+                });
+    },
+
+    // Forward Serilog events to registered
+    // ILogger providers such as Azure Monitor.
+    writeToProviders: true);
 
 
 // ============================================================
@@ -66,47 +137,100 @@ builder.Host.UseSerilog((context, services, configuration) =>
 
 builder.Services
     .AddOpenTelemetry()
-    .WithTracing(tracing =>
-    {
-        tracing
-            // Custom application spans
-            .AddSource("QuotesApi")
+    .ConfigureResource(
+        resource =>
+            resource.AddService("QuotesApi"))
 
-            // Automatic instrumentation
-            .AddAspNetCoreInstrumentation()
-            .AddEntityFrameworkCoreInstrumentation()
-            .AddHttpClientInstrumentation()
+    .WithTracing(
+        tracing =>
+        {
+            tracing
 
-            // Aspire / OTLP
-            .AddOtlpExporter(options =>
+                // Custom application spans
+                .AddSource("QuotesApi")
+
+                // EF Core instrumentation
+                .AddEntityFrameworkCoreInstrumentation()
+
+                // Aspire / OTLP
+                .AddOtlpExporter(
+                    options =>
+                    {
+                        options.Endpoint =
+                            new Uri(
+                                "http://localhost:4317");
+                    });
+
+            if (!useAzureMonitor)
             {
-                options.Endpoint =
-                    new Uri("http://localhost:4317");
+                // When Azure Monitor is not configured,
+                // use normal local instrumentation.
+
+                tracing
+                    .AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation();
+            }
+        });
+
+
+// ============================================================
+// Azure Monitor
+// ============================================================
+
+if (useAzureMonitor)
+{
+    // Current Microsoft-supported Azure Monitor
+    // OpenTelemetry package/API:
+    //
+    // Azure.Monitor.OpenTelemetry.AspNetCore
+    // + UseAzureMonitor()
+
+    builder.Services
+        .AddOpenTelemetry()
+        .UseAzureMonitor(
+            options =>
+            {
+                options.ConnectionString =
+                    applicationInsightsConnectionString;
             });
-    });
+}
 
 
 // ============================================================
 // Configuration
 // ============================================================
 
-var jwtKey = builder.Configuration["Jwt:Key"]
+var jwtOptions = builder.Configuration
+    .GetSection("Jwt")
+    .Get<JwtOptions>()
     ?? throw new InvalidOperationException(
-        "JWT key is not configured.");
+        "JWT configuration is not configured.");
 
-var jwtIssuer = builder.Configuration["Jwt:Issuer"]
-    ?? throw new InvalidOperationException(
+if (string.IsNullOrWhiteSpace(jwtOptions.Key))
+{
+    throw new InvalidOperationException(
+        "JWT signing key is not configured.");
+}
+
+if (string.IsNullOrWhiteSpace(jwtOptions.Issuer))
+{
+    throw new InvalidOperationException(
         "JWT issuer is not configured.");
+}
 
-var jwtAudience = builder.Configuration["Jwt:Audience"]
-    ?? throw new InvalidOperationException(
+if (string.IsNullOrWhiteSpace(jwtOptions.Audience))
+{
+    throw new InvalidOperationException(
         "JWT audience is not configured.");
+}
 
-var entraTenantId = builder.Configuration["Entra:TenantId"]
+var entraTenantId =
+    builder.Configuration["Entra:TenantId"]
     ?? throw new InvalidOperationException(
         "Entra tenant ID is not configured.");
 
-var entraAudience = builder.Configuration["Entra:Audience"]
+var entraAudience =
+    builder.Configuration["Entra:Audience"]
     ?? throw new InvalidOperationException(
         "Entra audience is not configured.");
 
@@ -116,99 +240,125 @@ var entraAudience = builder.Configuration["Entra:Audience"]
 // ============================================================
 
 builder.Services
-    .AddAuthentication(options =>
-    {
-        options.DefaultAuthenticateScheme = "Smart";
-        options.DefaultChallengeScheme = "Smart";
-    })
+
+    .AddAuthentication(
+        options =>
+        {
+            options.DefaultAuthenticateScheme =
+                "Smart";
+
+            options.DefaultChallengeScheme =
+                "Smart";
+        })
 
     // ========================================================
     // Internal JWT
     // ========================================================
-    .AddJwtBearer("InternalJwt", options =>
-    {
-        options.TokenValidationParameters =
-            new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
 
-                ValidIssuer = jwtIssuer,
-                ValidAudience = jwtAudience,
+    .AddJwtBearer(
+        "InternalJwt",
+        options =>
+        {
+            options.TokenValidationParameters =
+                new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
 
-                IssuerSigningKey =
-                    new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(jwtKey))
-            };
-    })
+                    ValidIssuer =
+                        jwtOptions.Issuer,
+
+                    ValidAudience =
+                        jwtOptions.Audience,
+
+                    IssuerSigningKey =
+                        new SymmetricSecurityKey(
+                            Encoding.UTF8.GetBytes(
+                                jwtOptions.Key))
+                };
+        })
 
     // ========================================================
     // Microsoft Entra JWT
     // ========================================================
-    .AddJwtBearer("EntraJwt", options =>
-    {
-        options.Authority =
-            $"https://login.microsoftonline.com/{entraTenantId}/v2.0";
 
-        options.TokenValidationParameters =
-            new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = true,
+    .AddJwtBearer(
+        "EntraJwt",
+        options =>
+        {
+            options.Authority =
+                $"https://login.microsoftonline.com/" +
+                $"{entraTenantId}/v2.0";
 
-                ValidAudience = entraAudience
-            };
-    })
+            options.TokenValidationParameters =
+                new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+
+                    ValidAudience =
+                        entraAudience
+                };
+        })
 
     // ========================================================
     // Smart Policy Scheme
     // ========================================================
+
     .AddPolicyScheme(
         "Smart",
         "Internal JWT or Microsoft Entra JWT",
         options =>
         {
-            options.ForwardDefaultSelector = context =>
-            {
-                var authorization =
-                    context.Request.Headers.Authorization.ToString();
-
-                // No Bearer token
-                if (!authorization.StartsWith(
-                        "Bearer ",
-                        StringComparison.OrdinalIgnoreCase))
+            options.ForwardDefaultSelector =
+                context =>
                 {
-                    return "InternalJwt";
-                }
+                    var authorization =
+                        context.Request
+                            .Headers
+                            .Authorization
+                            .ToString();
 
-                var token =
-                    authorization["Bearer ".Length..].Trim();
-
-                try
-                {
-                    var jwt =
-                        new JwtSecurityTokenHandler()
-                            .ReadJwtToken(token);
-
-                    // Microsoft Entra issuer
-                    if (jwt.Issuer.Contains(
-                            "login.microsoftonline.com",
-                            StringComparison.OrdinalIgnoreCase))
+                    // No Bearer token
+                    if (!authorization.StartsWith(
+                            "Bearer ",
+                            StringComparison
+                                .OrdinalIgnoreCase))
                     {
-                        return "EntraJwt";
+                        return "InternalJwt";
                     }
 
-                    // Internal JWT
-                    return "InternalJwt";
-                }
-                catch
-                {
-                    return "InternalJwt";
-                }
-            };
+                    var token =
+                        authorization[
+                            "Bearer ".Length..]
+                        .Trim();
+
+                    try
+                    {
+                        var jwt =
+                            new JwtSecurityTokenHandler()
+                                .ReadJwtToken(token);
+
+                        // Microsoft Entra issuer
+                        if (jwt.Issuer.Contains(
+                                "login.microsoftonline.com",
+                                StringComparison
+                                    .OrdinalIgnoreCase))
+                        {
+                            return "EntraJwt";
+                        }
+
+                        // Internal JWT
+                        return "InternalJwt";
+                    }
+                    catch
+                    {
+                        return "InternalJwt";
+                    }
+                };
         });
 
 
@@ -216,18 +366,21 @@ builder.Services
 // Authorization
 // ============================================================
 
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("can-edit-quotes", policy =>
+builder.Services.AddAuthorization(
+    options =>
     {
-        policy.RequireClaim(
-            "scope",
-            "quotes.write");
+        options.AddPolicy(
+            "can-edit-quotes",
+            policy =>
+            {
+                policy.RequireClaim(
+                    "scope",
+                    "quotes.write");
 
-        policy.AddRequirements(
-            new CanDeleteQuoteRequirement());
+                policy.AddRequirements(
+                    new CanDeleteQuoteRequirement());
+            });
     });
-});
 
 
 // ============================================================
@@ -286,39 +439,45 @@ var app = builder.Build();
 // Request TraceId / SpanId correlation
 // ============================================================
 
-app.Use(async (context, next) =>
-{
-    var activity = Activity.Current;
-
-    using (LogContext.PushProperty(
-        "TraceId",
-        activity?.TraceId.ToString() ?? "none"))
-    using (LogContext.PushProperty(
-        "SpanId",
-        activity?.SpanId.ToString() ?? "none"))
+app.Use(
+    async (context, next) =>
     {
-        // ----------------------------------------------------
-        // Custom application span
-        // ----------------------------------------------------
-        using var customActivity =
-            activitySource.StartActivity(
-                "application-processing");
+        var activity =
+            Activity.Current;
 
-        customActivity?.SetTag(
-            "application.component",
-            "QuotesApi");
+        using (LogContext.PushProperty(
+            "TraceId",
+            activity?.TraceId.ToString()
+                ?? "none"))
 
-        customActivity?.SetTag(
-            "http.method",
-            context.Request.Method);
+        using (LogContext.PushProperty(
+            "SpanId",
+            activity?.SpanId.ToString()
+                ?? "none"))
+        {
+            // ------------------------------------------------
+            // Custom application span
+            // ------------------------------------------------
 
-        customActivity?.SetTag(
-            "http.path",
-            context.Request.Path.ToString());
+            using var customActivity =
+                activitySource.StartActivity(
+                    "application-processing");
 
-        await next();
-    }
-});
+            customActivity?.SetTag(
+                "application.component",
+                "QuotesApi");
+
+            customActivity?.SetTag(
+                "http.method",
+                context.Request.Method);
+
+            customActivity?.SetTag(
+                "http.path",
+                context.Request.Path.ToString());
+
+            await next();
+        }
+    });
 
 
 // ============================================================
@@ -326,6 +485,7 @@ app.Use(async (context, next) =>
 // ============================================================
 
 app.UseAuthentication();
+
 app.UseAuthorization();
 
 
@@ -333,23 +493,28 @@ app.UseAuthorization();
 // Create / update database
 // ============================================================
 
-using (var scope = app.Services.CreateScope())
+using (var scope =
+       app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider
-        .GetRequiredService<QuotesDbContext>();
+    var db =
+        scope.ServiceProvider
+            .GetRequiredService<
+                QuotesDbContext>();
 
     db.Database.Migrate();
 
     if (!db.Users.Any())
     {
-        db.Users.Add(new User
-        {
-            Email = "test@example.com",
+        db.Users.Add(
+            new User
+            {
+                Email =
+                    "test@example.com",
 
-            PasswordHash =
-                BCrypt.Net.BCrypt.HashPassword(
-                    "Password123!")
-        });
+                PasswordHash =
+                    BCrypt.Net.BCrypt.HashPassword(
+                        "Password123!")
+            });
 
         db.SaveChanges();
     }
@@ -360,8 +525,7 @@ using (var scope = app.Services.CreateScope())
 // API endpoints
 // ============================================================
 
-app.MapAuthEndpoints(
-    builder.Configuration);
+app.MapAuthEndpoints();
 
 app.MapQuoteEndpoints();
 

@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
 using QuotesApi.Models;
 using QuotesApi.Repositories;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace QuotesApi.Extensions;
 
@@ -50,6 +52,7 @@ public static class QuoteEndpointExtensions
 
         group.MapPost("/", async (
             CreateQuoteRequest request,
+            ClaimsPrincipal user,
             IQuoteRepository repository,
             ILoggerFactory loggerFactory,
             CancellationToken cancellationToken) =>
@@ -67,9 +70,14 @@ public static class QuoteEndpointExtensions
                 creation.Quote!,
                 cancellationToken);
 
+            var userId =
+                user.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
+
             logger.LogInformation(
-                "Created quote {QuoteId}",
-                createdQuote.Id);
+                "Created quote {QuoteId} for user {UserId}",
+                createdQuote.Id,
+                userId);
 
             return Results.Created(
                 $"/api/quotes/{createdQuote.Id}",
