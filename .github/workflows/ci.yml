@@ -47,6 +47,9 @@ jobs:
             --collect:"XPlat Code Coverage" \
             --results-directory ./TestResults/Integration
 
+      - name: Install ReportGenerator
+        run: dotnet tool install -g dotnet-reportgenerator-globaltool
+
       - name: Check Coverage
         shell: pwsh
         run: |
@@ -57,25 +60,36 @@ jobs:
             exit 1
           }
 
-          $totalCovered = 0
-          $totalValid = 0
+          Write-Host "Found $($coverageFiles.Count) coverage files."
 
-          foreach ($file in $coverageFiles) {
-            [xml]$coverage = Get-Content $file.FullName
+          $reports = ($coverageFiles.FullName -join ';')
 
-            $covered = [double]$coverage.coverage.'lines-covered'
-            $valid = [double]$coverage.coverage.'lines-valid'
+          reportgenerator `
+            "-reports:$reports" `
+            "-targetdir:./TestResults/MergedCoverage" `
+            "-reporttypes:Cobertura"
 
-            Write-Host "$($file.FullName): $covered / $valid lines covered"
+          $mergedFile = "./TestResults/MergedCoverage/Cobertura.xml"
 
-            $totalCovered += $covered
-            $totalValid += $valid
+          if (-not (Test-Path $mergedFile)) {
+            Write-Error "Merged coverage file was not created."
+            exit 1
           }
 
-          $coveragePercentage = ($totalCovered / $totalValid) * 100
+          [xml]$coverage = Get-Content $mergedFile
 
-          Write-Host "Total lines covered: $totalCovered"
-          Write-Host "Total valid lines: $totalValid"
+          $covered = [double]$coverage.coverage.'lines-covered'
+          $valid = [double]$coverage.coverage.'lines-valid'
+
+          if ($valid -eq 0) {
+            Write-Error "No valid lines were found in the coverage report."
+            exit 1
+          }
+
+          $coveragePercentage = ($covered / $valid) * 100
+
+          Write-Host "Lines covered: $covered"
+          Write-Host "Lines valid: $valid"
           Write-Host "Total coverage: $coveragePercentage%"
 
           if ($coveragePercentage -lt 70) {
